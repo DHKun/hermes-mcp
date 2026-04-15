@@ -1,119 +1,107 @@
 # hermes-mcp
 
-> 通过 MCP（Model Context Protocol）将 Hermes Agent 的工具暴露给 Claude Code 使用
+<!-- language picker -->
+[English](./README.md) | [简体中文](./README_zh.md)
 
-把 Hermes Agent 变成一个 MCP server，让 Claude Code 能直接调用它的工具（浏览器自动化、终端、文件读写、视觉分析等）——无需 `delegate_task` 的开销，直接原生 MCP 集成。
+> Expose Hermes Agent tools to Claude Code via MCP (Model Context Protocol)
 
-## 架构
+Turn your Hermes Agent into an MCP server so Claude Code can call its tools (browser automation, terminal, file read/write, vision, etc.) directly — no `delegate_task` overhead, just native MCP integration.
+
+## Architecture
 
 ```
-Claude Code (MCP Client) ←→ hermes-mcp-server.py ←→ Hermes 工具
-                                (stdio)            (terminal, browser 等)
+Claude Code (MCP Client) ←→ hermes-mcp-server.py ←→ Hermes tools
+                                (stdio)            (terminal, browser, etc.)
 ```
 
-没有这个：Claude Code 只有有限的内置工具，无法访问 Hermes 的能力。
+Without this: Claude Code has limited built-in tools and can't access Hermes capabilities.
 
-有了这个：Claude Code 获得 **34 个 Hermes 工具**，作为一等 MCP 工具使用。
+With this: Claude Code gets **34 Hermes tools** as first-class MCP tools.
 
-## 功能一览
+## What You Get
 
-| 类别 | 工具 |
-|------|------|
-| 浏览器 | `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_scroll`, `browser_vision`, `browser_console`, ... |
-| 终端 | `terminal`, `process` |
-| 文件 | `read_file`, `write_file`, `patch`, `search_files` |
-| 网页 | `web_search`, `web_extract` |
-| 视觉 | `vision_analyze` |
+| Category | Tools |
+|----------|-------|
+| Browser | `browser_navigate`, `browser_snapshot`, `browser_click`, `browser_type`, `browser_scroll`, `browser_vision`, `browser_console`, ... |
+| Terminal | `terminal`, `process` |
+| File | `read_file`, `write_file`, `patch`, `search_files` |
+| Web | `web_search`, `web_extract` |
+| Vision | `vision_analyze` |
 | Skills | `skills_list`, `skill_view`, `skill_manage` |
-| 代码 | `execute_code`, `delegate_task` |
-| 记忆 | `memory`, `session_search` |
-| 其他 | `todo`, `clarify`, `cronjob`, `text_to_speech`, `homeassistant` |
+| Code | `execute_code`, `delegate_task` |
+| Memory | `memory`, `session_search` |
+| Other | `todo`, `clarify`, `cronjob`, `text_to_speech`, `homeassistant` |
 
-## 环境要求
+## Prerequisites
 
-1. **Hermes Agent** 已安装在 `~/.hermes/hermes-agent`
-2. **MCP SDK for Python**：
+1. **Hermes Agent** installed at `~/.hermes/hermes-agent`
+2. **MCP SDK for Python**:
    ```bash
    cd ~/.hermes/hermes-agent
    uv pip install mcp --python .venv/bin/python3
    ```
-3. **Claude Code v2.x**（带 MCP 支持）
+3. **Claude Code v2.x** with MCP support
 
-## 快速开始
+## Quick Start
 
-### 第一步：安装 MCP server
+### Step 1: Install the MCP server
 
 ```bash
-# 克隆仓库
+# Clone the repo
 git clone https://github.com/DHKun/hermes-mcp.git
 cd hermes-mcp
 
-# 或者直接把脚本复制到任意位置
+# Or just copy the script anywhere
 cp hermes-mcp-server.py ~/.hermes/
 chmod +x hermes-mcp-server.py
 ```
 
-### 第二步：连接到 Claude Code
+### Step 2: Connect to Claude Code
 
 ```bash
-# 通过 CLI（最简单）
+# Via CLI (easiest)
 claude mcp add hermes -- python /path/to/hermes-mcp-server.py
 
-# 验证是否成功
+# Verify it works
 claude mcp list
-# 应该看到：hermes → python ... hermes-mcp-server.py
+# Should show: hermes → python ... hermes-mcp-server.py
 ```
 
-### 第三步：在 Claude Code 中使用 Hermes 工具
+### Step 3: Use Hermes tools in Claude Code
 
-连接后，Claude Code 可以自然地调用 Hermes 工具：
+Once connected, Claude Code can naturally call Hermes tools:
 
 ```
-# 打开浏览器并导航
+# Open a browser and navigate
 Use browser_navigate to check https://github.com/trending
 
-# 在完整上下文中运行终端命令
+# Run terminal commands with full context
 Use terminal to run git status and git diff
 
-# 使用 Hermes 的路径处理读写文件
+# Read/write files with Hermes path handling
 Use read_file to look at src/app.py
 Use patch to add error handling to src/app.py
 
-# 在代码库中搜索
+# Search across codebase
 Use search_files to find all uses of "async def"
 
-# 将复杂任务委托回 Hermes Agent
+# Delegate complex tasks back to Hermes Agent
 Use delegate_task with goal="Research the architecture of this repo"
 ```
 
-Claude Code 会自动看到 Hermes 工具及其原生工具——无需特殊语法。
+Claude Code will automatically see Hermes tools alongside its native tools — no special syntax needed.
 
-## 配置方式
+## Configuration
 
-### 方式一：通过 Claude Code CLI（最简单）
+### Option A: Via Claude Code CLI (easiest)
 
 ```bash
 claude mcp add hermes -- python /path/to/hermes-mcp-server.py
 ```
 
-### 方式二：通过 settings.json（持久化）
+### Option B: Via settings.json (persistent)
 
-添加到 `~/.claude/settings.json`：
-
-```json
-{
-  "mcpServers": {
-    "hermes": {
-      "command": "python",
-      "args": ["/path/to/hermes-mcp-server.py"]
-    }
-  }
-}
-```
-
-### 方式三：按项目配置（团队共享）
-
-添加到项目中的 `.claude/settings.json`：
+Add to `~/.claude/settings.json`:
 
 ```json
 {
@@ -126,52 +114,67 @@ claude mcp add hermes -- python /path/to/hermes-mcp-server.py
 }
 ```
 
-## 工作原理
+### Option C: Per-project (team-shared)
 
-1. MCP server（`hermes-mcp-server.py`）在启动时导入 Hermes 的工具注册表
-2. 将所有 Hermes 工具以其完整 schema 注册为 MCP 工具
-3. 当 Claude Code 调用工具时，server 将请求转发给 Hermes 的 handler
-4. 结果通过 stdio 返回 JSON 序列化的数据
+Add to `.claude/settings.json` in your project:
 
-Server 使用 stdio 传输——本地子进程通信最可靠的方案：
-- 无端口冲突
-- 无网络开销
-- 适用于所有环境（本地、SSH、Docker）
-- 符合 Claude Code 的子进程模型
+```json
+{
+  "mcpServers": {
+    "hermes": {
+      "command": "python",
+      "args": ["/path/to/hermes-mcp-server.py"]
+    }
+  }
+}
+```
 
-## 安全说明
+## How It Works
 
-- server 作为 Claude Code 的子进程运行，继承其环境变量（ANTHROPIC_API_KEY 等）
-- **不会**暴露 Hermes 的消息适配器（Telegram、Discord）
-- 大输出在 200K 字符处截断（可通过 `HERMES_MCP_MAX_OUTPUT` 配置）
-- 不会泄露任何凭证——只返回工具执行结果
+1. The MCP server (`hermes-mcp-server.py`) imports Hermes's tool registry at startup
+2. It registers all Hermes tools as MCP tools with their full schemas
+3. When Claude Code calls a tool, the server forwards it to Hermes's handler
+4. Results are JSON-serialized and returned via stdio
 
-## 常见问题
+The server uses stdio transport — the most reliable for local subprocess communication:
+- No port conflicts
+- No network overhead
+- Works in all environments (local, SSH, Docker)
+- Natural for Claude Code's subprocess model
+
+## Security
+
+- The server runs as a subprocess of Claude Code, inheriting its environment (ANTHROPIC_API_KEY, etc.)
+- It does **not** expose Hermes's messaging adapters (Telegram, Discord)
+- Large outputs are truncated at 200K chars (configurable via `HERMES_MCP_MAX_OUTPUT`)
+- No credentials are leaked — only tool results are returned
+
+## Troubleshooting
 
 ### "MCP server hermes failed to start"
 
-检查 Python 路径——必须使用安装了 `mcp` 包的 Python：
+Check the Python path — you must use the same Python that has the `mcp` package installed:
 
 ```bash
-# 错误（系统 Python 可能没有 mcp）
+# Wrong (system Python may not have mcp)
 python hermes-mcp-server.py
 
-# 正确（使用 Hermes 的 venv Python）
+# Right (use Hermes's venv Python)
 ~/.hermes/hermes-agent/.venv/bin/python3 hermes-mcp-server.py
 ```
 
-### "Tool not found" 错误
+### "Tool not found" errors
 
-Claude Code 可能缓存了旧的工具定义。重启 MCP server：
+Claude Code may have cached old tool definitions. Restart the MCP server:
 
 ```bash
 claude mcp remove hermes
 claude mcp add hermes -- python /path/to/hermes-mcp-server.py
 ```
 
-### 输出内容过大
+### Very large outputs
 
-设置 `HERMES_MCP_MAX_OUTPUT` 环境变量：
+Set `HERMES_MCP_MAX_OUTPUT` env var:
 
 ```json
 {
@@ -185,19 +188,19 @@ claude mcp add hermes -- python /path/to/hermes-mcp-server.py
 }
 ```
 
-## 与 `delegate_task` 的对比
+## Comparison with `delegate_task`
 
-| 方面 | `delegate_task` | `hermes-mcp` |
-|------|----------------|--------------|
-| 启动方式 | 每次任务启动新子进程 | 一个持久化的 server |
-| 延迟 | 每次调用约 1-2 秒 | 近零延迟（进程内） |
-| 工具访问 | 通过 Hermes CLI 解析 | 直接 MCP 调用 |
-| 适用场景 | 一次性的复杂任务 | 快速、频繁的工具调用 |
-| 会话连续性 | 每次任务全新 | server 在会话中持久化 |
+| Aspect | `delegate_task` | `hermes-mcp` |
+|--------|----------------|--------------|
+| Startup | Spawns new subprocess per task | One persistent server |
+| Latency | ~1-2s overhead per call | Near-zero (in-process) |
+| Tool access | Via Hermes CLI parsing | Direct MCP calls |
+| Best for | One-shot complex tasks | Fast, frequent tool calls |
+| Session continuity | Each task is fresh | Server persists in session |
 
-代码编写/重构场景：`hermes-mcp` 更快。
+For code writing/refactoring: `hermes-mcp` is faster.
 
-需要委托给完整 agent 并带完整上下文：`delegate_task` 仍然适用。
+For delegation to full agent with full context: `delegate_task` is still appropriate.
 
 ## License
 
